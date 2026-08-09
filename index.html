@@ -711,6 +711,10 @@
       <h3>Changelog</h3>
       <div id="changelog-list">
         <div class="changelog-entry">
+          <strong>1.0.4</strong>
+          <p>Bugfix: Nach der Anmeldung im Browser landete man auf dem iPhone wieder auf dem Login-Bildschirm der installierten App, da iOS die laufende Weiterleitung mitten im Anmeldevorgang zurück in die App umgeleitet hat. Die Anmeldung läuft jetzt über ein Popup statt einer Weiterleitung, das davon nicht betroffen ist.</p>
+        </div>
+        <div class="changelog-entry">
           <strong>1.0.3</strong>
           <p>Bugfix: Der Wechsel zum Browser auf dem iPhone hat nicht zuverlässig funktioniert, da iOS einen per JavaScript ausgelösten window.open() im Standalone-Modus nicht als „App verlassen" behandelt. Nutzt jetzt einen echten Link-Tap, den iOS zuverlässig an Safari übergibt.</p>
         </div>
@@ -784,7 +788,7 @@ import {
   doc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 document.getElementById('version-display').textContent = APP_VERSION;
 
 const firebaseConfig = {
@@ -912,11 +916,20 @@ function teardownSnapshot() {
 document.getElementById('google-signin-btn').addEventListener('click', async () => {
   document.getElementById('login-error').hidden = true;
   try {
-    if (isIOS() || isStandalone()) {
+    if (isStandalone()) {
+      // Android/Chrome standalone can't host a popup, but (unlike iOS) it
+      // isn't prone to hijacking a mid-flight redirect back into the app,
+      // so the redirect flow works fine there.
       await signInWithRedirect(auth, provider);
       return;
     }
     try {
+      // Popup avoids a top-level navigation entirely, which matters on iOS:
+      // a tab opened from the installed app (via the standalone escape link)
+      // can have its OAuth redirect hijacked mid-flight back into the
+      // standalone container by iOS's web-app scope matching, breaking the
+      // session correlation. A popup never navigates the tab away, so it
+      // can't be hijacked that way.
       await signInWithPopup(auth, provider);
     } catch (err) {
       if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/operation-not-supported-in-this-environment')) {
