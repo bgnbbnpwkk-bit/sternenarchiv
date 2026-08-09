@@ -587,6 +587,7 @@
       </svg>
       Mit Google anmelden
     </button>
+    <p id="ios-standalone-hint" class="login-sub" hidden>Die Anmeldung öffnet sich im Browser. Danach bitte zu dieser App zurückwechseln — sie erkennt dich automatisch.</p>
     <p id="login-error" class="login-error" hidden></p>
   </div>
 </div>
@@ -700,6 +701,10 @@
       <h3>Changelog</h3>
       <div id="changelog-list">
         <div class="changelog-entry">
+          <strong>1.0.2</strong>
+          <p>Bugfix: Auf dem iPhone hing die Anmeldung in der installierten PWA in einer Schleife, da Safari den Sitzungsspeicher beim Wechsel zu Google nicht zuverlässig erhält. Die Anmeldung öffnet sich jetzt im Browser; nach dem Zurückwechseln zur App wird die Anmeldung automatisch erkannt.</p>
+        </div>
+        <div class="changelog-entry">
           <strong>1.0.1</strong>
           <p>Bugfix: Google-Anmeldung schlug in der installierten PWA (Standalone-Modus) fehl, da dort Popup-Logins nicht zuverlässig funktionieren. Nutzt jetzt automatisch den Redirect-Login, sobald die App im Standalone-Modus läuft.</p>
         </div>
@@ -765,7 +770,7 @@ import {
   doc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 document.getElementById('version-display').textContent = APP_VERSION;
 
 const firebaseConfig = {
@@ -869,6 +874,7 @@ updateOnlineStatus();
 function showLoginScreen() {
   document.getElementById('login-screen').hidden = false;
   document.getElementById('app').hidden = true;
+  document.getElementById('ios-standalone-hint').hidden = !(isIOS() && isStandalone());
 }
 function showApp() {
   document.getElementById('login-screen').hidden = true;
@@ -883,6 +889,15 @@ function teardownSnapshot() {
 document.getElementById('google-signin-btn').addEventListener('click', async () => {
   document.getElementById('login-error').hidden = true;
   try {
+    if (isIOS() && isStandalone()) {
+      // iOS tears down the standalone webview's sessionStorage across the
+      // OAuth round-trip, so signInWithRedirect can never resolve here.
+      // Hand off to Safari instead; the persisted session (which does
+      // survive, since it lives in local/IndexedDB storage shared with
+      // Safari) is picked up automatically on visibilitychange below.
+      window.open(window.location.href, '_blank');
+      return;
+    }
     if (isIOS() || isStandalone()) {
       await signInWithRedirect(auth, provider);
       return;
@@ -898,6 +913,13 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
     }
   } catch (err) {
     showLoginError(errorMessageFor(err));
+  }
+});
+
+document.addEventListener('visibilitychange', () => {
+  const loginScreen = document.getElementById('login-screen');
+  if (document.visibilityState === 'visible' && !loginScreen.hidden) {
+    window.location.reload();
   }
 });
 
