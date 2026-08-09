@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Sternenarchiv</title>
+<meta name="theme-color" content="#05060e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sternenarchiv">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="./icon-512.png">
+<style>
+  :root {
+    --gold: #f3b64a;
+    --gold-soft: #f6cd7e;
+    --ink: #e9eefb;
+    --ink-dim: #9aa6c4;
+    --ink-faint: #6b7599;
+    --line: rgba(150,170,230,0.14);
+    --card: #12152599;
+    --bg: #05060e;
+    --danger: #e3667a;
+  }
+
+  * { box-sizing: border-box; }
+
+  [hidden] { display: none !important; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100%;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:
+      radial-gradient(ellipse 900px 700px at 12% -5%, rgba(126, 92, 214, 0.32), transparent 60%),
+      radial-gradient(ellipse 900px 700px at 92% -5%, rgba(70, 110, 220, 0.28), transparent 58%),
+      var(--bg);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  #starfield {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    color: var(--gold-soft);
+    margin: 0 0 0.35rem;
+  }
+
+  /* ---------- Banners ---------- */
+  .banner {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    background: #1c1f33;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    max-width: 90vw;
+    text-align: center;
+  }
+  .banner-error {
+    color: #ffd9de;
+    border-color: rgba(227,102,122,0.5);
+    background: #2a1420;
+  }
+
+  /* ---------- Login ---------- */
+  #login-screen {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 2.2rem 1.8rem;
+    text-align: center;
+  }
+
+  .login-card h1 {
+    font-size: 1.9rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .login-sub {
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+    margin: 0 0 1.6rem;
+  }
+
+  .login-error {
+    margin-top: 1rem;
+    color: #ffd9de;
+    font-size: 0.85rem;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn-primary, .btn-secondary, .btn-danger {
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 999px;
+    padding: 0.7rem 1.3rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: border-color 0.2s, transform 0.1s, opacity 0.2s;
+  }
+  .btn-primary:active, .btn-secondary:active, .btn-danger:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gold-soft), var(--gold));
+    color: #241804;
+    border: none;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-secondary:hover { border-color: var(--gold); }
+
+  .btn-danger {
+    background: rgba(227,102,122,0.15);
+    color: #ffb9c4;
+    border: 1px solid rgba(227,102,122,0.45);
+  }
+
+  .full-width { width: 100%; }
+
+  .file-label {
+    display: inline-flex;
+    text-align: center;
+  }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 1rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-btn:hover { border-color: var(--gold); color: var(--gold-soft); }
+
+  /* ---------- App shell ---------- */
+  #app {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .app-header {
+    padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 12px;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .app-header h1 {
+    font-size: 1.7rem;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+  }
+
+  #search-input {
+    flex: 1 1 220px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.65rem 1.1rem;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.9rem;
+  }
+  #search-input:focus { outline: none; border-color: var(--gold); }
+  #search-input::placeholder { color: var(--ink-faint); }
+
+  main {
+    flex: 1;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 12px 20px 40px;
+  }
+
+  #loading-indicator, #empty-state {
+    text-align: center;
+    color: var(--ink-dim);
+    padding: 3rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .catalog-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 640px) {
+    .catalog-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 900px) {
+    .catalog-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--gold); }
+
+  .card-catno {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--gold-soft);
+    font-weight: 600;
+  }
+
+  .card-title {
+    font-size: 1.08rem;
+    margin: 0.1rem 0;
+  }
+
+  .card-desc {
+    color: var(--ink-dim);
+    font-size: 0.86rem;
+    margin: 0;
+    flex: 1;
+    line-height: 1.4;
+  }
+
+  .card-date {
+    color: var(--ink-faint);
+    font-size: 0.76rem;
+    margin: 0 0 0.4rem;
+  }
+
+  .card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .card-actions button {
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+  }
+  .card-actions button:hover { border-color: var(--gold); color: var(--gold-soft); }
+  .card-actions .btn-delete:hover { border-color: var(--danger); color: #ffb9c4; }
+
+  .app-footer {
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 0.78rem;
+    padding: 1.5rem 20px calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    opacity: 0.7;
+  }
+
+  /* ---------- Viewer overlay ---------- */
+  #viewer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: calc(0.8rem + env(safe-area-inset-top, 0px)) calc(0.9rem + env(safe-area-inset-right, 0px)) 0.8rem calc(0.9rem + env(safe-area-inset-left, 0px));
+    background: #0a0c16;
+    border-bottom: 1px solid var(--line);
+  }
+  .viewer-header button {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .viewer-header button:hover { border-color: var(--gold); }
+  #viewer-title {
+    flex: 1;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--ink-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    .viewer-header { padding-top: calc(0.4rem + env(safe-area-inset-top, 0px)); padding-bottom: 0.4rem; }
+    .viewer-header button { padding: 0.3rem 0.7rem; font-size: 0.75rem; }
+  }
+
+  #viewer-frame {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+  }
+
+  /* ---------- Modals / Sheets ---------- */
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2,3,8,0.72);
+    z-index: 400;
+  }
+
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 401;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-width: 480px;
+    background: #12142499;
+    background: #12152f;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 1.6rem;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal-card.small { max-width: 360px; }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .modal-close {
+    background: transparent;
+    border: none;
+    color: var(--ink-dim);
+    font-size: 1.1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.2rem;
+  }
+  .modal-close:hover { color: var(--gold-soft); }
+
+  .modal-card section { margin-bottom: 1.3rem; }
+  .modal-card section:last-child { margin-bottom: 0; }
+  .modal-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--gold-soft);
+  }
+  .modal-card ul { margin: 0; padding-left: 1.2rem; color: var(--ink-dim); font-size: 0.88rem; line-height: 1.6; }
+  .modal-card p { color: var(--ink-dim); font-size: 0.88rem; line-height: 1.5; margin: 0.3rem 0; }
+  .changelog-entry { margin-bottom: 0.6rem; }
+  .changelog-entry strong { color: var(--gold); }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+  }
+
+  .version-info {
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 0.78rem;
+    margin-top: 1rem;
+  }
+
+  #gear-panel section { margin-bottom: 1.2rem; }
+  #gear-panel .hint { color: var(--ink-faint); font-size: 0.8rem; margin: 0.4rem 0; }
+
+  /* ---------- Add/Edit sheet ---------- */
+  #add-edit-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    z-index: 402;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  @media (min-width: 640px) {
+    #add-edit-sheet { align-items: center; }
+  }
+
+  .sheet-inner {
+    width: 100%;
+    max-width: 560px;
+    max-height: 92vh;
+    background: #12152f;
+    border: 1px solid var(--line);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (min-width: 640px) {
+    .sheet-inner { border-radius: 20px; }
+  }
+
+  .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 1.4rem 0.8rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .sheet-header h2 { font-size: 1.15rem; }
+
+  .sheet-body {
+    padding: 1rem 1.4rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .way-block { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .field-label {
+    font-size: 0.78rem;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  input[type="text"], textarea {
+    font: inherit;
+    font-size: 0.9rem;
+    background: #0c0e1a;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+    color: var(--ink);
+    resize: vertical;
+    width: 100%;
+  }
+  input[type="text"]:focus, textarea:focus { outline: none; border-color: var(--gold); }
+  #html-input { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.78rem; min-height: 110px; }
+
+  .hint { color: var(--ink-faint); font-size: 0.8rem; margin: 0.2rem 0 0; }
+  .size-indicator { font-size: 0.78rem; color: var(--ink-faint); min-height: 1em; }
+  .size-warning { color: var(--gold-soft); }
+  .size-error { color: #ffb9c4; }
+  .sheet-error { color: #ffb9c4; font-size: 0.85rem; }
+
+  .sheet-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding: 1rem 1.4rem;
+    border-top: 1px solid var(--line);
+  }
+
+  /* ---------- Scrollbar niceties ---------- */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: rgba(150,170,230,0.2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div id="offline-banner" class="banner" hidden>Keine Verbindung — das Archiv braucht Internet.</div>
+<div id="error-banner" class="banner banner-error" hidden></div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <p class="eyebrow">— Sternenarchiv</p>
+    <h1>Sternenarchiv</h1>
+    <p class="login-sub">Ein persönliches Archiv astronomischer Visualisierungen.</p>
+    <button id="google-signin-btn" class="btn-primary full-width">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.8 2.71v2.26h2.91c1.7-1.57 2.69-3.87 2.69-6.61z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.35 0-4.34-1.58-5.05-3.71H.96v2.33C2.44 15.98 5.48 18 9 18z"/>
+        <path fill="#FBBC05" d="M3.95 10.71a5.4 5.4 0 010-3.42V4.96H.96a9 9 0 000 8.08l2.99-2.33z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.99 2.33C4.66 5.16 6.65 3.58 9 3.58z"/>
+      </svg>
+      Mit Google anmelden
+    </button>
+    <p id="login-error" class="login-error" hidden></p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" hidden>
+  <header class="app-header">
+    <div class="header-top">
+      <div>
+        <p class="eyebrow">— Sternenarchiv</p>
+        <h1>Katalog</h1>
+      </div>
+      <div class="header-actions">
+        <button id="info-btn" class="icon-btn" aria-label="Informationen">i</button>
+        <button id="gear-btn" class="icon-btn" aria-label="Einstellungen">⚙</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <input id="search-input" type="search" placeholder="Suche nach Titel oder Beschreibung…">
+      <button id="sort-toggle" class="btn-secondary">Neueste zuerst</button>
+      <button id="add-btn" class="btn-primary">+ Hinzufügen</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="loading-indicator">Lade Archiv…</div>
+    <div id="empty-state" hidden>Noch nichts im Archiv — füge deine erste Visualisierung hinzu.</div>
+    <div id="catalog-grid" class="catalog-grid"></div>
+  </main>
+
+  <footer class="app-footer">Sternenarchiv · Team Melli &amp; Marc</footer>
+</div>
+
+<!-- VIEWER OVERLAY -->
+<div id="viewer-overlay" hidden>
+  <div class="viewer-header">
+    <button id="viewer-back">← Zurück</button>
+    <span id="viewer-title"></span>
+    <button id="viewer-newtab">⤢ Neuer Tab</button>
+  </div>
+  <iframe id="viewer-frame" title="Visualisierung" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"></iframe>
+</div>
+
+<!-- ADD/EDIT SHEET -->
+<div id="sheet-backdrop" class="backdrop" hidden></div>
+<div id="add-edit-sheet" hidden role="dialog" aria-modal="true">
+  <div class="sheet-inner">
+    <div class="sheet-header">
+      <h2 id="sheet-heading">Neue Visualisierung hinzufügen</h2>
+      <button class="modal-close" id="sheet-close" aria-label="Schließen">✕</button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="way-block">
+        <button type="button" id="clipboard-btn" class="btn-primary full-width">Aus Zwischenablage einfügen</button>
+        <p id="clipboard-hint" class="hint" hidden>Zwischenablage nicht lesbar — bitte hier einfügen.</p>
+      </div>
+
+      <div class="way-block">
+        <label class="btn-secondary full-width file-label">
+          HTML-Datei wählen
+          <input type="file" id="file-input" accept=".html,text/html" hidden>
+        </label>
+      </div>
+
+      <div class="way-block">
+        <label class="field-label" for="html-input">HTML-Code (einfügen oder bearbeiten)</label>
+        <textarea id="html-input" rows="6" placeholder="<!DOCTYPE html>…"></textarea>
+        <p id="size-indicator" class="size-indicator"></p>
+      </div>
+
+      <div class="way-block">
+        <label class="field-label" for="sheet-title">Titel</label>
+        <input type="text" id="sheet-title" placeholder="Titel der Visualisierung">
+      </div>
+      <div class="way-block">
+        <label class="field-label" for="sheet-description">Beschreibung</label>
+        <textarea id="sheet-description" rows="2" placeholder="Kurze Beschreibung"></textarea>
+      </div>
+
+      <p id="sheet-error" class="sheet-error" hidden></p>
+    </div>
+
+    <div class="sheet-footer">
+      <button type="button" id="sheet-cancel" class="btn-secondary">Abbrechen</button>
+      <button type="button" id="sheet-save" class="btn-primary">Ins Archiv legen</button>
+    </div>
+  </div>
+</div>
+
+<!-- INFO MODAL -->
+<div id="info-modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2>Über Sternenarchiv</h2>
+      <button class="modal-close" id="info-close" aria-label="Schließen">✕</button>
+    </div>
+    <section>
+      <h3>Features</h3>
+      <ul>
+        <li>Katalog interaktiver Astronomie-Visualisierungen, dauerhaft in Firebase gespeichert</li>
+        <li>Google-Login für ein einzelnes autorisiertes Konto</li>
+        <li>Hinzufügen per Zwischenablage, Datei oder direktem HTML-Code</li>
+        <li>Automatische Erkennung von Titel und Beschreibung</li>
+        <li>Vollbild-Ansicht mit Öffnen in neuem Tab</li>
+        <li>Suche, Sortierung und Export als Datei</li>
+        <li>Einmaliger Import des alten, eingebetteten Archivs</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Changelog</h3>
+      <div id="changelog-list">
+        <div class="changelog-entry">
+          <strong>1.0.0</strong>
+          <p>Erste Version: Firebase-Speicherung, Google-Login, Import aus Zwischenablage, Datei und altem Archiv.</p>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h3>Tech-Stack</h3>
+      <p>HTML, CSS, JavaScript (ES-Module) · Firebase Authentication · Cloud Firestore · Progressive Web App mit Service Worker</p>
+    </section>
+  </div>
+</div>
+
+<!-- GEAR PANEL -->
+<div id="gear-panel" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2>Einstellungen</h2>
+      <button class="modal-close" id="gear-close" aria-label="Schließen">✕</button>
+    </div>
+    <section>
+      <button id="update-app-btn" class="btn-secondary full-width">App aktualisieren</button>
+    </section>
+    <section>
+      <h3>Altes Archiv importieren</h3>
+      <p class="hint">Wähle die bisherige sternenarchiv.html, um alle Einträge einmalig zu übernehmen.</p>
+      <label class="btn-secondary full-width file-label">
+        Datei wählen
+        <input type="file" id="legacy-file-input" accept=".html,text/html" hidden>
+      </label>
+      <p id="legacy-import-result" class="hint" hidden></p>
+    </section>
+    <section>
+      <button id="logout-btn" class="btn-secondary full-width">Abmelden</button>
+    </section>
+    <p class="version-info">Version <span id="version-display"></span></p>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div id="confirm-dialog" class="modal" hidden>
+  <div class="modal-card small">
+    <h2>Eintrag löschen?</h2>
+    <p>Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+    <div class="modal-actions">
+      <button id="confirm-cancel-btn" class="btn-secondary">Abbrechen</button>
+      <button id="confirm-delete-btn" class="btn-danger">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+  getRedirectResult, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+import {
+  getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc,
+  doc, serverTimestamp, query, orderBy
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+const APP_VERSION = '1.0.0';
+document.getElementById('version-display').textContent = APP_VERSION;
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBZbh9UjXGbTTPIO_jewU41sTKYe4pHvNY",
+  authDomain: "unser-einkaufszettel.firebaseapp.com",
+  databaseURL: "https://unser-einkaufszettel-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "unser-einkaufszettel",
+  storageBucket: "unser-einkaufszettel.firebasestorage.app",
+  messagingSenderId: "1091522338551",
+  appId: "1:1091522338551:web:20bbe0ed444691eebcbdf2"
+};
+
+const ALLOWED_EMAIL = 'marc.saenger1975@gmail.com';
+const COLLECTION_NAME = 'sternenarchiv';
+const MAX_BYTES = 1000000;
+const WARN_BYTES = 800 * 1024;
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+let catalog = [];
+let unsubscribeSnapshot = null;
+let sortMode = 'newest';
+let currentBlobUrl = null;
+let viewerCurrentItem = null;
+let editingId = null;
+let pendingDeleteId = null;
+
+/* ---------------- Helpers ---------------- */
+
+function isIOS() {
+  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function errorMessageFor(err) {
+  const code = err && err.code;
+  if (code === 'permission-denied') return 'Kein Zugriff auf die Datenbank — bitte Sicherheitsregeln prüfen.';
+  if (code === 'auth/popup-closed-by-user') return 'Anmeldung abgebrochen.';
+  if (code === 'auth/network-request-failed') return 'Keine Verbindung zum Server.';
+  if (code === 'unavailable') return 'Server nicht erreichbar — bitte später erneut versuchen.';
+  return (err && err.message) ? err.message : 'Ein unbekannter Fehler ist aufgetreten.';
+}
+
+let errorTimeout;
+function showError(message) {
+  const el = document.getElementById('error-banner');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(errorTimeout);
+  errorTimeout = setTimeout(() => { el.hidden = true; }, 6000);
+}
+
+function showLoginError(message) {
+  const el = document.getElementById('login-error');
+  el.textContent = message;
+  el.hidden = false;
+}
+
+function formatDate(ts) {
+  if (!ts || typeof ts.toDate !== 'function') return '';
+  const d = ts.toDate();
+  return d.toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function computeNextCatNo() {
+  let max = 0;
+  for (const it of catalog) {
+    if (typeof it.catNo === 'number' && it.catNo > max) max = it.catNo;
+  }
+  return max + 1;
+}
+
+/* ---------------- Global error handlers ---------------- */
+
+window.addEventListener('error', (e) => {
+  showError('Unerwarteter Fehler: ' + (e.message || 'unbekannt'));
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const reason = e.reason;
+  showError('Unerwarteter Fehler: ' + ((reason && reason.message) || String(reason) || 'unbekannt'));
+});
+
+/* ---------------- Offline banner ---------------- */
+
+function updateOnlineStatus() {
+  document.getElementById('offline-banner').hidden = navigator.onLine;
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+/* ---------------- Auth ---------------- */
+
+function showLoginScreen() {
+  document.getElementById('login-screen').hidden = false;
+  document.getElementById('app').hidden = true;
+}
+function showApp() {
+  document.getElementById('login-screen').hidden = true;
+  document.getElementById('app').hidden = false;
+  document.getElementById('login-error').hidden = true;
+}
+function teardownSnapshot() {
+  if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  catalog = [];
+}
+
+document.getElementById('google-signin-btn').addEventListener('click', async () => {
+  document.getElementById('login-error').hidden = true;
+  try {
+    if (isIOS()) {
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/operation-not-supported-in-this-environment')) {
+        await signInWithRedirect(auth, provider);
+      } else {
+        throw err;
+      }
+    }
+  } catch (err) {
+    showLoginError(errorMessageFor(err));
+  }
+});
+
+getRedirectResult(auth).catch((err) => showLoginError(errorMessageFor(err)));
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    teardownSnapshot();
+    showLoginScreen();
+    return;
+  }
+  if (user.email !== ALLOWED_EMAIL) {
+    signOut(auth);
+    showLoginError('Dieses Archiv ist privat. Der Zugang ist auf ein Konto beschränkt.');
+    return;
+  }
+  showApp();
+  startSnapshot();
+});
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  try {
+    await signOut(auth);
+  } catch (err) {
+    showError(errorMessageFor(err));
+  }
+  document.getElementById('gear-panel').hidden = true;
+});
+
+/* ---------------- Firestore live catalog ---------------- */
+
+function startSnapshot() {
+  document.getElementById('loading-indicator').hidden = false;
+  const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
+  unsubscribeSnapshot = onSnapshot(q, (snap) => {
+    catalog = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    document.getElementById('loading-indicator').hidden = true;
+    renderCatalog();
+  }, (err) => {
+    document.getElementById('loading-indicator').hidden = true;
+    showError(errorMessageFor(err));
+  });
+}
+
+function renderCatalog() {
+  const term = document.getElementById('search-input').value.trim().toLowerCase();
+  let items = catalog.filter((it) => {
+    if (!term) return true;
+    const t = (it.title || '').toLowerCase();
+    const d = (it.description || '').toLowerCase();
+    return t.includes(term) || d.includes(term);
+  });
+
+  if (sortMode === 'catNo') {
+    items = items.slice().sort((a, b) => (a.catNo || 0) - (b.catNo || 0));
+  }
+
+  const grid = document.getElementById('catalog-grid');
+  grid.innerHTML = '';
+  document.getElementById('empty-state').hidden = catalog.length !== 0;
+
+  for (const item of items) {
+    const card = document.createElement('article');
+    card.className = 'card';
+
+    const catNoEl = document.createElement('div');
+    catNoEl.className = 'card-catno';
+    catNoEl.textContent = 'SG-' + String(item.catNo || 0).padStart(3, '0');
+
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'card-title';
+    titleEl.textContent = item.title || '(ohne Titel)';
+
+    const descEl = document.createElement('p');
+    descEl.className = 'card-desc';
+    descEl.textContent = item.description || '';
+
+    const dateEl = document.createElement('p');
+    dateEl.className = 'card-date';
+    dateEl.textContent = formatDate(item.createdAt);
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    actions.innerHTML = `
+      <button class="btn-open" data-id="${item.id}">Öffnen</button>
+      <button class="btn-edit" data-id="${item.id}">Bearbeiten</button>
+      <button class="btn-export" data-id="${item.id}">Als Datei sichern</button>
+      <button class="btn-delete" data-id="${item.id}">Löschen</button>
+    `;
+
+    card.append(catNoEl, titleEl, descEl, dateEl, actions);
+    grid.appendChild(card);
+  }
+}
+
+document.getElementById('search-input').addEventListener('input', renderCatalog);
+
+document.getElementById('sort-toggle').addEventListener('click', () => {
+  sortMode = sortMode === 'newest' ? 'catNo' : 'newest';
+  document.getElementById('sort-toggle').textContent = sortMode === 'newest' ? 'Neueste zuerst' : 'Katalognummer';
+  renderCatalog();
+});
+
+document.getElementById('catalog-grid').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const item = catalog.find((it) => it.id === id);
+  if (!item) return;
+  if (btn.classList.contains('btn-open')) openViewer(item);
+  else if (btn.classList.contains('btn-edit')) openEditSheet(item);
+  else if (btn.classList.contains('btn-export')) exportItem(item);
+  else if (btn.classList.contains('btn-delete')) requestDelete(id);
+});
+
+/* ---------------- Viewer ---------------- */
+
+function openViewer(item) {
+  viewerCurrentItem = item;
+  document.getElementById('viewer-title').textContent = item.title || '';
+  document.getElementById('viewer-frame').srcdoc = item.html || '';
+  document.getElementById('viewer-overlay').hidden = false;
+}
+
+function closeViewer() {
+  document.getElementById('viewer-overlay').hidden = true;
+  document.getElementById('viewer-frame').srcdoc = '';
+  viewerCurrentItem = null;
+  if (currentBlobUrl) {
+    URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = null;
+  }
+}
+
+document.getElementById('viewer-back').addEventListener('click', closeViewer);
+
+document.getElementById('viewer-newtab').addEventListener('click', () => {
+  if (!viewerCurrentItem) return;
+  if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+  const blob = new Blob([viewerCurrentItem.html || ''], { type: 'text/html' });
+  currentBlobUrl = URL.createObjectURL(blob);
+  window.open(currentBlobUrl, '_blank');
+});
+
+/* ---------------- Export ---------------- */
+
+function exportItem(item) {
+  const base = (item.title || 'visualisierung')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const filename = (base || 'visualisierung') + '.html';
+  const blob = new Blob([item.html || ''], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------- Delete ---------------- */
+
+function requestDelete(id) {
+  pendingDeleteId = id;
+  document.getElementById('confirm-dialog').hidden = false;
+}
+
+document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+  pendingDeleteId = null;
+  document.getElementById('confirm-dialog').hidden = true;
+});
+
+document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+  if (!pendingDeleteId) return;
+  const id = pendingDeleteId;
+  pendingDeleteId = null;
+  document.getElementById('confirm-dialog').hidden = true;
+  try {
+    await deleteDoc(doc(db, COLLECTION_NAME, id));
+  } catch (err) {
+    showError(errorMessageFor(err));
+  }
+});
+
+/* ---------------- Metadata detection ---------------- */
+
+function parseMetadata(html) {
+  let title = '', description = '';
+  const metaMatch = html.match(/<!--\s*SG-META\s*([\s\S]*?)-->/i);
+  if (metaMatch) {
+    try {
+      const obj = JSON.parse(metaMatch[1].trim());
+      if (obj && typeof obj === 'object') {
+        title = obj.title || '';
+        description = obj.description || '';
+      }
+    } catch (e) {
+      // malformed JSON in SG-META block — ignore silently
+    }
+  }
+  if (!title) {
+    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+    if (titleMatch) title = titleMatch[1].trim();
+  }
+  if (!description) {
+    const metaTagMatch = html.match(/<meta[^>]+name=["']description["'][^>]*>/i);
+    if (metaTagMatch) {
+      const contentMatch = metaTagMatch[0].match(/content=["']([^"']*)["']/i);
+      if (contentMatch) description = contentMatch[1].trim();
+    }
+  }
+  return { title, description };
+}
+
+/* ---------------- Add / Edit sheet ---------------- */
+
+const sheetBackdrop = document.getElementById('sheet-backdrop');
+const sheetEl = document.getElementById('add-edit-sheet');
+const htmlInput = document.getElementById('html-input');
+const sheetTitleInput = document.getElementById('sheet-title');
+const sheetDescInput = document.getElementById('sheet-description');
+const sheetErrorEl = document.getElementById('sheet-error');
+const sizeIndicatorEl = document.getElementById('size-indicator');
+const sheetSaveBtn = document.getElementById('sheet-save');
+
+function updateSizeIndicator(html) {
+  if (!html) { sizeIndicatorEl.textContent = ''; sizeIndicatorEl.className = 'size-indicator'; return; }
+  const bytes = new Blob([html]).size;
+  const kb = (bytes / 1024).toFixed(1);
+  if (bytes > MAX_BYTES) {
+    sizeIndicatorEl.textContent = `${kb} KB — zu groß für einen Eintrag (max. 1 MB)`;
+    sizeIndicatorEl.className = 'size-indicator size-error';
+  } else if (bytes >= WARN_BYTES) {
+    sizeIndicatorEl.textContent = `${kb} KB — nähert sich dem Limit von 1 MB`;
+    sizeIndicatorEl.className = 'size-indicator size-warning';
+  } else {
+    sizeIndicatorEl.textContent = `${kb} KB`;
+    sizeIndicatorEl.className = 'size-indicator';
+  }
+}
+
+function parseAndFill(html) {
+  const { title, description } = parseMetadata(html);
+  if (title) sheetTitleInput.value = title;
+  if (description) sheetDescInput.value = description;
+  updateSizeIndicator(html);
+}
+
+function showSheetError(message) {
+  sheetErrorEl.textContent = message;
+  sheetErrorEl.hidden = false;
+}
+function clearSheetError() {
+  sheetErrorEl.hidden = true;
+  sheetErrorEl.textContent = '';
+}
+
+function showSheet() {
+  clearSheetError();
+  document.getElementById('clipboard-hint').hidden = true;
+  sheetBackdrop.hidden = false;
+  sheetEl.hidden = false;
+}
+function closeSheet() {
+  sheetBackdrop.hidden = true;
+  sheetEl.hidden = true;
+  editingId = null;
+}
+
+function openAddSheet() {
+  editingId = null;
+  document.getElementById('sheet-heading').textContent = 'Neue Visualisierung hinzufügen';
+  sheetSaveBtn.textContent = 'Ins Archiv legen';
+  htmlInput.value = '';
+  sheetTitleInput.value = '';
+  sheetDescInput.value = '';
+  updateSizeIndicator('');
+  showSheet();
+}
+
+function openEditSheet(item) {
+  editingId = item.id;
+  document.getElementById('sheet-heading').textContent = 'Visualisierung bearbeiten';
+  sheetSaveBtn.textContent = 'Speichern';
+  htmlInput.value = item.html || '';
+  sheetTitleInput.value = item.title || '';
+  sheetDescInput.value = item.description || '';
+  updateSizeIndicator(item.html || '');
+  showSheet();
+}
+
+document.getElementById('add-btn').addEventListener('click', openAddSheet);
+document.getElementById('sheet-close').addEventListener('click', closeSheet);
+document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
+sheetBackdrop.addEventListener('click', closeSheet);
+
+document.getElementById('clipboard-btn').addEventListener('click', async () => {
+  clearSheetError();
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) throw new Error('unavailable');
+    const text = await navigator.clipboard.readText();
+    if (!text || !text.trim()) throw new Error('empty');
+    htmlInput.value = text;
+    parseAndFill(text);
+    document.getElementById('clipboard-hint').hidden = true;
+  } catch (e) {
+    document.getElementById('clipboard-hint').hidden = false;
+    htmlInput.focus();
+  }
+});
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result || '');
+    htmlInput.value = text;
+    parseAndFill(text);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+let parseDebounce;
+htmlInput.addEventListener('input', () => {
+  updateSizeIndicator(htmlInput.value);
+  clearTimeout(parseDebounce);
+  parseDebounce = setTimeout(() => {
+    if (!sheetTitleInput.value.trim()) {
+      const { title, description } = parseMetadata(htmlInput.value);
+      if (title) sheetTitleInput.value = title;
+      if (description && !sheetDescInput.value.trim()) sheetDescInput.value = description;
+    }
+  }, 400);
+});
+
+sheetSaveBtn.addEventListener('click', async () => {
+  clearSheetError();
+  const html = htmlInput.value;
+  const title = sheetTitleInput.value.trim();
+  const description = sheetDescInput.value.trim();
+
+  if (!/<html|<!doctype html/i.test(html)) {
+    showSheetError('Das sieht nicht nach einer vollständigen HTML-Seite aus.');
+    return;
+  }
+  if (!title) {
+    showSheetError('Bitte einen Titel eingeben.');
+    return;
+  }
+  const size = new Blob([html]).size;
+  if (size > MAX_BYTES) {
+    showSheetError('Diese Visualisierung ist zu groß für einen Eintrag (max. 1 MB).');
+    return;
+  }
+
+  sheetSaveBtn.disabled = true;
+  try {
+    if (editingId) {
+      await updateDoc(doc(db, COLLECTION_NAME, editingId), {
+        title, description, html, updatedAt: serverTimestamp()
+      });
+    } else {
+      const catNo = computeNextCatNo();
+      await addDoc(collection(db, COLLECTION_NAME), {
+        catNo, title, description, html,
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+    }
+    closeSheet();
+  } catch (err) {
+    showSheetError(errorMessageFor(err));
+  } finally {
+    sheetSaveBtn.disabled = false;
+  }
+});
+
+/* ---------------- Info modal & gear panel ---------------- */
+
+document.getElementById('info-btn').addEventListener('click', () => { document.getElementById('info-modal').hidden = false; });
+document.getElementById('info-close').addEventListener('click', () => { document.getElementById('info-modal').hidden = true; });
+document.getElementById('info-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'info-modal') document.getElementById('info-modal').hidden = true;
+});
+
+document.getElementById('gear-btn').addEventListener('click', () => { document.getElementById('gear-panel').hidden = false; });
+document.getElementById('gear-close').addEventListener('click', () => { document.getElementById('gear-panel').hidden = true; });
+document.getElementById('gear-panel').addEventListener('click', (e) => {
+  if (e.target.id === 'gear-panel') document.getElementById('gear-panel').hidden = true;
+});
+
+document.getElementById('update-app-btn').addEventListener('click', () => {
+  window.location.reload(true);
+});
+
+/* ---------------- Legacy import ---------------- */
+
+function extractQuotedField(source, fieldName) {
+  const re = new RegExp(fieldName + '\\s*:\\s*(["\'])((?:\\\\.|(?!\\1)[\\s\\S])*)\\1', 'g');
+  const results = [];
+  let m;
+  while ((m = re.exec(source)) !== null) {
+    results.push(m[2]);
+  }
+  return results;
+}
+
+function unescapeJsLiteral(str) {
+  return str.replace(/\\(.)/g, (_, ch) => {
+    switch (ch) {
+      case 'n': return '\n';
+      case 't': return '\t';
+      case 'r': return '\r';
+      case '"': return '"';
+      case "'": return "'";
+      case '\\': return '\\';
+      default: return ch;
+    }
+  });
+}
+
+async function importLegacy(text) {
+  const resultEl = document.getElementById('legacy-import-result');
+  resultEl.hidden = false;
+  resultEl.textContent = 'Importiere…';
+
+  try {
+    const arrMatch = text.match(/const\s+CATALOG\s*=\s*(\[[\s\S]*?\]);/);
+    if (!arrMatch) {
+      resultEl.textContent = 'Kein CATALOG-Array in der Datei gefunden.';
+      return;
+    }
+    const arrText = arrMatch[1];
+    const titles = extractQuotedField(arrText, 'title').map(unescapeJsLiteral);
+    const descriptions = extractQuotedField(arrText, 'description').map(unescapeJsLiteral);
+    const htmlB64s = extractQuotedField(arrText, 'htmlB64');
+
+    const count = Math.min(titles.length, htmlB64s.length);
+    if (count === 0) {
+      resultEl.textContent = 'Keine Einträge im CATALOG-Array gefunden.';
+      return;
+    }
+
+    const existingTitles = new Set(catalog.map((it) => (it.title || '').trim()));
+    let nextCatNo = computeNextCatNo();
+    let imported = 0, skipped = 0;
+
+    for (let i = 0; i < count; i++) {
+      const title = (titles[i] || '').trim();
+      if (!title || existingTitles.has(title)) { skipped++; continue; }
+
+      let html = '';
+      try {
+        html = decodeURIComponent(escape(atob(htmlB64s[i])));
+      } catch (e) {
+        skipped++;
+        continue;
+      }
+      if (new Blob([html]).size > MAX_BYTES) { skipped++; continue; }
+
+      try {
+        await addDoc(collection(db, COLLECTION_NAME), {
+          catNo: nextCatNo,
+          title,
+          description: descriptions[i] || '',
+          html,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        existingTitles.add(title);
+        nextCatNo++;
+        imported++;
+      } catch (err) {
+        skipped++;
+      }
+    }
+
+    resultEl.textContent = `${imported} Einträge importiert, ${skipped} übersprungen (bereits vorhanden oder fehlerhaft).`;
+  } catch (err) {
+    resultEl.textContent = errorMessageFor(err);
+  }
+}
+
+document.getElementById('legacy-file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => importLegacy(String(reader.result || ''));
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ---------------- Service worker ---------------- */
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+/* ---------------- Starfield ---------------- */
+
+(function starfield() {
+  const canvas = document.getElementById('starfield');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const count = Math.max(60, Math.floor((canvas.width * canvas.height) / 8000));
+    stars = Array.from({ length: count }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.3 + 0.3,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.3 + Math.random() * 0.6
+    }));
+    if (reduceMotion) drawStatic();
+  }
+
+  function drawStatic() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#e9eefb';
+    for (const s of stars) {
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawFrame(t) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#e9eefb';
+    for (const s of stars) {
+      const twinkle = 0.5 + 0.5 * Math.sin(t * 0.001 * s.speed + s.phase);
+      ctx.globalAlpha = 0.25 + twinkle * 0.55;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(drawFrame);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  if (!reduceMotion) requestAnimationFrame(drawFrame);
+})();
+</script>
+</body>
+</html>
