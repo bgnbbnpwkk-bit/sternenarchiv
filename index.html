@@ -700,6 +700,10 @@
       <h3>Changelog</h3>
       <div id="changelog-list">
         <div class="changelog-entry">
+          <strong>1.0.1</strong>
+          <p>Bugfix: Google-Anmeldung schlug in der installierten PWA (Standalone-Modus) fehl, da dort Popup-Logins nicht zuverlässig funktionieren. Nutzt jetzt automatisch den Redirect-Login, sobald die App im Standalone-Modus läuft.</p>
+        </div>
+        <div class="changelog-entry">
           <strong>1.0.0</strong>
           <p>Erste Version: Firebase-Speicherung, Google-Login, Import aus Zwischenablage, Datei und altem Archiv.</p>
         </div>
@@ -761,7 +765,7 @@ import {
   doc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 document.getElementById('version-display').textContent = APP_VERSION;
 
 const firebaseConfig = {
@@ -797,6 +801,10 @@ let pendingDeleteId = null;
 function isIOS() {
   return /iP(hone|ad|od)/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 
 function errorMessageFor(err) {
@@ -875,7 +883,7 @@ function teardownSnapshot() {
 document.getElementById('google-signin-btn').addEventListener('click', async () => {
   document.getElementById('login-error').hidden = true;
   try {
-    if (isIOS()) {
+    if (isIOS() || isStandalone()) {
       await signInWithRedirect(auth, provider);
       return;
     }
