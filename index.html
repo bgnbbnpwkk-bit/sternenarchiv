@@ -588,16 +588,6 @@
       </svg>
       Mit Google anmelden
     </button>
-    <a id="google-signin-link" class="btn-primary full-width" href="./" target="_blank" rel="noopener noreferrer" hidden>
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.8 2.71v2.26h2.91c1.7-1.57 2.69-3.87 2.69-6.61z"/>
-        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.35 0-4.34-1.58-5.05-3.71H.96v2.33C2.44 15.98 5.48 18 9 18z"/>
-        <path fill="#FBBC05" d="M3.95 10.71a5.4 5.4 0 010-3.42V4.96H.96a9 9 0 000 8.08l2.99-2.33z"/>
-        <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.99 2.33C4.66 5.16 6.65 3.58 9 3.58z"/>
-      </svg>
-      Mit Google anmelden
-    </a>
-    <p id="ios-standalone-hint" class="login-sub" hidden>Die Anmeldung öffnet sich im Browser. Danach bitte zu dieser App zurückwechseln — sie erkennt dich automatisch.</p>
     <p id="login-error" class="login-error" hidden></p>
   </div>
 </div>
@@ -711,6 +701,10 @@
       <h3>Changelog</h3>
       <div id="changelog-list">
         <div class="changelog-entry">
+          <strong>1.0.5</strong>
+          <p>Bugfix: Die Google-Anmeldung in der installierten iPhone-App hing weiter fest, weil die bisherigen Versuche auf einer falschen Annahme beruhten (dass Popups im Standalone-Modus nicht funktionieren). Nutzt jetzt durchgängig ein Popup-Fenster, ohne Sonderbehandlung für iOS oder den Standalone-Modus — das entspricht dem, was auf diesem Gerät nachweislich zuverlässig funktioniert.</p>
+        </div>
+        <div class="changelog-entry">
           <strong>1.0.4</strong>
           <p>Bugfix: Nach der Anmeldung im Browser landete man auf dem iPhone wieder auf dem Login-Bildschirm der installierten App, da iOS die laufende Weiterleitung mitten im Anmeldevorgang zurück in die App umgeleitet hat. Die Anmeldung läuft jetzt über ein Popup statt einer Weiterleitung, das davon nicht betroffen ist.</p>
         </div>
@@ -780,15 +774,14 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-  getRedirectResult, onAuthStateChanged, signOut
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 import {
   getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 document.getElementById('version-display').textContent = APP_VERSION;
 
 const firebaseConfig = {
@@ -820,15 +813,6 @@ let editingId = null;
 let pendingDeleteId = null;
 
 /* ---------------- Helpers ---------------- */
-
-function isIOS() {
-  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-}
 
 function errorMessageFor(err) {
   const code = err && err.code;
@@ -892,16 +876,6 @@ updateOnlineStatus();
 function showLoginScreen() {
   document.getElementById('login-screen').hidden = false;
   document.getElementById('app').hidden = true;
-  // iOS never leaves the standalone webview for a JS-triggered window.open();
-  // a real <a target="_blank"> click is what actually hands off to Safari,
-  // which the redirect flow depends on (sessionStorage doesn't survive the
-  // round-trip inside the standalone webview itself).
-  const iosStandalone = isIOS() && isStandalone();
-  document.getElementById('ios-standalone-hint').hidden = !iosStandalone;
-  document.getElementById('google-signin-btn').hidden = iosStandalone;
-  const link = document.getElementById('google-signin-link');
-  link.hidden = !iosStandalone;
-  if (iosStandalone) link.href = window.location.href;
 }
 function showApp() {
   document.getElementById('login-screen').hidden = true;
@@ -916,41 +890,12 @@ function teardownSnapshot() {
 document.getElementById('google-signin-btn').addEventListener('click', async () => {
   document.getElementById('login-error').hidden = true;
   try {
-    if (isStandalone()) {
-      // Android/Chrome standalone can't host a popup, but (unlike iOS) it
-      // isn't prone to hijacking a mid-flight redirect back into the app,
-      // so the redirect flow works fine there.
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-    try {
-      // Popup avoids a top-level navigation entirely, which matters on iOS:
-      // a tab opened from the installed app (via the standalone escape link)
-      // can have its OAuth redirect hijacked mid-flight back into the
-      // standalone container by iOS's web-app scope matching, breaking the
-      // session correlation. A popup never navigates the tab away, so it
-      // can't be hijacked that way.
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/operation-not-supported-in-this-environment')) {
-        await signInWithRedirect(auth, provider);
-      } else {
-        throw err;
-      }
-    }
+    await signInWithPopup(auth, provider);
   } catch (err) {
+    if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) return;
     showLoginError(errorMessageFor(err));
   }
 });
-
-document.addEventListener('visibilitychange', () => {
-  const loginScreen = document.getElementById('login-screen');
-  if (document.visibilityState === 'visible' && !loginScreen.hidden) {
-    window.location.reload();
-  }
-});
-
-getRedirectResult(auth).catch((err) => showLoginError(errorMessageFor(err)));
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
